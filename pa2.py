@@ -26,6 +26,7 @@ def main():
     #counters for report summary
     total_devices = 0
     skipped_devices = 0
+    violations = []
     
     #loop through every device element in the xml file
     for device in root.findall("device"):
@@ -33,12 +34,15 @@ def main():
         device_id = device.get("id")
         role = device.get("role")
         os_version = device.get("os")
+        owner = device.findtext("owner")
         
         #if the device has an id, count it and inspect its interfaces
         if device_id is not None:
+            policy["min_os"]
             #print(device_id, role, os_version)
             roles[role] = roles.get(role, 0) + 1
             total_devices += 1
+            down_count = 0
             
             #check each interface under the device
             for intf in device.findall("interface"):
@@ -49,8 +53,31 @@ def main():
                    interfaces["up"] += 1    
                 elif status == "down":
                    interfaces["down"] += 1
+                   down_count += 1
                 else:
                    interfaces["other"] += 1
+                   
+            #check if min_os exists before accessing it 
+            if "min_os" in policy and role not in policy["min_os"]:
+                violations.append({
+                    "device" : device_id,
+                    "type" : "unknown_role",
+                    "role" : role
+                })
+            
+            if owner is None or owner.strip() == "":
+                violations.append({
+                    "device" : device_id,
+                    "type" : "missing_owner"
+                })
+                
+            if "max_down_interfaces" in policy:
+                if down_count > policy["max_down_interfaces"]:
+                    violations.append({
+                    "device": device_id,
+                    "type": "too_many_down",
+                    "down": down_count
+                    })
         else:
             #count devices that are missing an id
             skipped_devices += 1
@@ -61,7 +88,7 @@ def main():
         "skipped_devices" : skipped_devices,
          "roles" : roles,
          "interfaces" : interfaces,
-         "violations" : [],
+         "violations" : violations,
          "compliant" : []
     }
     
