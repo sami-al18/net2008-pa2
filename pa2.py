@@ -2,6 +2,11 @@ import xml.etree.ElementTree as ET
 import yaml
 import json
 
+def version_tuple(version, target_length):
+    parts = tuple(map(int, version.split(".")))
+    padding = target_length - len(parts)
+    return parts + (0,) * padding
+
 def main():
     """Run the fleet compliance auditor"""
     tree = ET.parse("PA2_sample1.xml")
@@ -27,10 +32,11 @@ def main():
     total_devices = 0
     skipped_devices = 0
     violations = []
+    compliant = []
     
     #loop through every device element in the xml file
     for device in root.findall("device"):
-        #get the value of the id attribute fro the current device
+        #get the value of the id attribute for the current device
         device_id = device.get("id")
         role = device.get("role")
         os_version = device.get("os")
@@ -78,9 +84,29 @@ def main():
                     "type": "too_many_down",
                     "down": down_count
                     })
+            if "min_os" in policy and role in policy["min_os"]:
+                required_version = policy["min_os"][role]
+                target_length = max(len(os_version.split(".")), len(required_version.split(".")))
+                installed = version_tuple(os_version, target_length)
+                required = version_tuple(required_version, target_length)
+                
+                #compare installed os againsit required os
+                if installed < required:
+                    violations.append({
+                        "device": device_id,
+                        "type": "os_outdated",
+                        "found": os_version,
+                        "required": required_version
+                        })
+                    
+            if not any(v["device"] == device_id for v in violations):
+                compliant.append(device_id)
+                    
         else:
             #count devices that are missing an id
             skipped_devices += 1
+    
+    compliant.sort()
             
     report = {
         "site": site,
@@ -89,7 +115,7 @@ def main():
          "roles" : roles,
          "interfaces" : interfaces,
          "violations" : violations,
-         "compliant" : []
+         "compliant" : compliant
     }
     
     #display report
