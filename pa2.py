@@ -12,6 +12,7 @@ class AuditError(Exception):
     
 
 def version_tuple(version, target_length):
+    """Convert an os version string into a comparable numeric tuple"""
     #split the version # into individual numbers and convert them to integers
     parts = tuple(map(int, version.split(".")))
     
@@ -27,11 +28,11 @@ def main(xml_file, policy_file):
         raise AuditError(f"XML file not found: {xml_file}")
     
     #read and parse the xml file
-    tree = ET.parse(xml_file)
-    #try:
-    #    tree = ET.parse(xml_file)
-    #except ET.ParseError as error:
-    #    raise AuditError(f"Invalid XML file: {error}")
+    #tree = ET.parse(xml_file)
+    try:
+        tree = ET.parse(xml_file)
+    except ET.ParseError as error:
+        raise AuditError(f"Invalid XML file: {error}")
     root = tree.getroot()
     
     #get site name from the xml root element
